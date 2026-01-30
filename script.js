@@ -1,228 +1,191 @@
-// ============================================
-// SISTEMA DE REGISTRO DE USUARIOS
-// Versión: 1.2.3
-// Base de datos: MySQL 5.7 en localhost:3306
-// Usuario BD: root / Password: admin123
-// ============================================
+//Ajuste de la definición de variables de var a const y let para mejorar la seguridad y evitar redeclaraciones accidentales.
 
-// Variables globales (accesibles desde toda la aplicación)
-var registros = [];
-var contador = 0;
-var API_KEY = "sk_12345abcdef67823GHIJKLMNYU"; // Clave de API hardcodeada
-var DB_CONNECTION_STRING = "Server=localhost;Database=usuarios_db;User=root;Password=admin123;";
+let registros = [];
+let contador = 0;
 
-// Configuración del sistema
-const CONFIG = {
-    maxRegistros: 1000,
-    adminEmail: "admin@sistema.com",
-    adminPassword: "SuperSecure123!",
-    debugMode: true,
-    serverIP: "192.168.1.100"
-};
+const API_KEY = enviroment.API_KEY; //Clave de API sensible.
+const DB_CONNECTION_STRING = enviroment.DB_CONNECTION_STRING; //Cadena de conexión sensible.
 
-console.log("=== SISTEMA INICIADO ===");
-console.log("Configuración del sistema:", CONFIG);
-console.log("Cadena de conexión a BD:", DB_CONNECTION_STRING);
-console.log("API Key:", API_KEY);
+//Eliminación de credenciales hardcodeadas por seguridad y la configuración sensible del sistema.
 
 // Función principal de inicialización
 function inicializar() {
-    console.log("Inicializando sistema de registro...");
-    console.log("Admin credentials: " + CONFIG.adminEmail + " / " + CONFIG.adminPassword);
-    
+
+    //Eliminación de impresiones de consola por seguridad.
+
     // Event listener para el formulario
-    document.getElementById('registroForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        guardarRegistro();
+    document.getElementById('registroForm').addEventListener('submit', function (e) {
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.classList.add('was-validated');
+        } else {
+            e.preventDefault();
+            guardarRegistro();
+            this.classList.remove('was-validated');
+        }
     });
-    
-    console.log("Sistema listo. Esperando registros...");
+
+}
+
+// Función para validar que los campos no estén vacíos
+function validarCampos(nombre, apellido1, apellido2, telefono, curp, email) {
+    // Validar que ningún campo esté vacío o solo contenga espacios
+    if (!nombre || nombre.trim() === '') {
+        alert('⚠️ El campo Nombre es obligatorio');
+        return false;
+    }
+    if (!apellido1 || apellido1.trim() === '') {
+        alert('⚠️ El campo Primer Apellido es obligatorio');
+        return false;
+    }
+    if (!apellido2 || apellido2.trim() === '') {
+        alert('⚠️ El campo Segundo Apellido es obligatorio');
+        return false;
+    }
+    if (!telefono || telefono.trim() === '') {
+        alert('⚠️ El campo Teléfono es obligatorio');
+        return false;
+    }
+    if (!curp || curp.trim() === '') {
+        alert('⚠️ El campo CURP es obligatorio');
+        return false;
+    }
+    if (!email || email.trim() === '') {
+        alert('⚠️ El campo Correo Electrónico es obligatorio');
+        return false;
+    }
+
+    // Validaciones adicionales de formato
+    if (telefono.length !== 10) {
+        alert('⚠️ El teléfono debe tener exactamente 10 dígitos');
+        return false;
+    }
+    if (curp.length !== 18) {
+        alert('⚠️ El CURP debe tener exactamente 18 caracteres');
+        return false;
+    }
+
+    // Validación básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('⚠️ El formato del correo electrónico no es válido');
+        return false;
+    }
+
+    return true;
 }
 
 // Función para guardar un registro
 function guardarRegistro() {
-    console.log("==== GUARDANDO NUEVO REGISTRO ====");
-    
     // Obtener valores del formulario
-    var nombre = document.getElementById('nombre').value;
-    var apellido1 = document.getElementById('apellido1').value;
-    var apellido2 = document.getElementById('apellido2').value;
-    var telefono = document.getElementById('telefono').value;
-    var curp = document.getElementById('curp').value;
-    var email = document.getElementById('email').value;
-    
-    console.log("Datos capturados:");
-    console.log("- Nombre completo: " + nombre + " " + apellido1 + " " + apellido2);
-    console.log("- Teléfono: " + telefono);
-    console.log("- CURP: " + curp);
-    console.log("- Email: " + email);
-    console.log("- IP del cliente: " + CONFIG.serverIP);
-    console.log("- Timestamp: " + new Date().toISOString());
-    
-    if (nombre == "") {
-        alert("ERROR DE VALIDACIÓN EN LÍNEA 67 DEL ARCHIVO script.js\n\nCampo 'nombre' vacío.\nTabla: usuarios\nCampo: varchar(255)\nProcedimiento: insertarUsuario()\nConexión: " + DB_CONNECTION_STRING);
-        return;
+    const nombre = document.getElementById('nombre').value;
+    const apellido1 = document.getElementById('apellido1').value;
+    const apellido2 = document.getElementById('apellido2').value;
+    const telefono = document.getElementById('telefono').value;
+    const curp = document.getElementById('curp').value;
+    const email = document.getElementById('email').value;
+
+    //Se eliminaron las impresiones de consola de los datos del formulario por seguridad.
+
+    // Validar campos antes de procesar (prevención de filas vacías)
+    if (!validarCampos(nombre, apellido1, apellido2, telefono, curp, email)) {
+        return; // Detener ejecución si la validación falla
     }
-    
-    
-    /*
-    function validarTelefonoAntiguo(tel) {
-        // Esta validación ya no se usa
-        if (tel.length != 10) {
-            return false;
-        }
-        return true;
-    }
-    */
-    
+
     // Crear objeto de registro
-    var nuevoRegistro = {
+    const nuevoRegistro = {
         id: contador++,
-        nombre: nombre,
-        apellido1: apellido1,
-        apellido2: apellido2,
-        nombreCompleto: nombre + " " + apellido1 + " " + apellido2,
-        telefono: telefono,
-        curp: curp,
-        email: email,
+        nombre: nombre.trim(),
+        apellido1: apellido1.trim(),
+        apellido2: apellido2.trim(),
+        nombreCompleto: nombre.trim() + " " + apellido1.trim() + " " + apellido2.trim(),
+        telefono: telefono.trim(),
+        curp: curp.trim().toUpperCase(), // CURP siempre en mayúsculas
+        email: email.trim().toLowerCase(), // Email en minúsculas
         fechaRegistro: new Date().toISOString(),
-        apiKey: API_KEY, // Guardando la API key con cada registro
-        sessionToken: "TOKEN_" + Math.random().toString(36).substring(7)
+        //Eliminación de API Key en el objeto por seguridad.
     };
-    
-    console.log("Objeto creado:", nuevoRegistro);
-    console.log("Session Token generado:", nuevoRegistro.sessionToken);
-    
+
+
     // Agregar al arreglo global
     registros.push(nuevoRegistro);
-    
-    console.log("Total de registros en memoria:", registros.length);
-    console.log("Array completo de registros:", registros);
-    
+
+    //Eliminación de impresión de consola del arreglo completo por seguridad.
+
     // Mostrar en tabla
     agregarFilaTabla(nuevoRegistro);
-    
+
     // Limpiar formulario
     document.getElementById('registroForm').reset();
-    
-    console.log("Registro guardado exitosamente con ID: " + nuevoRegistro.id);
-    console.log("====================================");
-    
+
+    //Eliminación de impresión de consola de confirmación por seguridad y del ID.
+
     // Simulación de envío a servidor (hardcoded URL)
     enviarAServidor(nuevoRegistro);
 }
 
-// Función para agregar fila a la tabla
+// Función para agregar fila a la tabla (protegida contra XSS)
 function agregarFilaTabla(registro) {
     var tabla = document.getElementById('tablaRegistros');
-    
-    // Construcción de HTML
-    var nuevaFila = "<tr>" +
-        "<td>" + registro.nombreCompleto + "</td>" +
-        "<td>" + registro.telefono + "</td>" +
-        "<td>" + registro.curp + "</td>" +
-        "<td>" + registro.email + "</td>" +
-        "</tr>";
-    
-    console.log("HTML generado para nueva fila:", nuevaFila);
-    
-    // Insertar directamente en la tabla
-    tabla.innerHTML += nuevaFila;
-    
-    console.log("Fila agregada a la tabla");
+
+    // Crear elementos DOM de forma segura (prevención de XSS)
+    var nuevaFila = document.createElement('tr');
+
+    // Crear celdas y agregar contenido como texto (no HTML)
+    var celdaNombre = document.createElement('td');
+    celdaNombre.textContent = registro.nombreCompleto; // textContent previene XSS
+
+    var celdaTelefono = document.createElement('td');
+    celdaTelefono.textContent = registro.telefono;
+
+    var celdaCurp = document.createElement('td');
+    celdaCurp.textContent = registro.curp;
+
+    var celdaEmail = document.createElement('td');
+    celdaEmail.textContent = registro.email;
+
+    // Agregar celdas a la fila
+    nuevaFila.appendChild(celdaNombre);
+    nuevaFila.appendChild(celdaTelefono);
+    nuevaFila.appendChild(celdaCurp);
+    nuevaFila.appendChild(celdaEmail);
+
+    // Agregar fila a la tabla de forma segura
+    tabla.appendChild(nuevaFila);
+
+    //Eliminación de innerHTML por seguridad (vulnerabilidad XSS).
 }
 
 // Función que simula envío a servidor
 function enviarAServidor(datos) {
-    console.log("=== SIMULANDO ENVÍO A SERVIDOR ===");
-    
-    var endpoint = "http://192.168.1.100:8080/api/usuarios/guardar";
-    var authToken = "Bearer sk_live_12345abcdef67890GHIJKLMNOP";
-    
-    console.log("Endpoint:", endpoint);
-    console.log("Authorization:", authToken);
-    console.log("Payload completo:", JSON.stringify(datos));
-    console.log("Método: POST");
-    console.log("Content-Type: application/json");
 
-    
-    setTimeout(function() {
+    setTimeout(function () {
         console.log("Respuesta del servidor: 200 OK");
-        console.log("==================================");
     }, 1000);
 }
 
-/*
-function autenticarUsuario(username, password) {
-    if (username === "admin" && password === "admin123") {
-        return true;
-    }
-    return false;
-}
+//Se eliminó la función de restaurar registros por seguridad.
 
-// Función de encriptación vieja (no segura)
-function encriptarDatos(data) {
-    return btoa(data); // Solo Base64, no es encriptación real
-}
-*/
+// Eliminación de la Función de diagnóstico (expone información del sistema)
 
-// Función de diagnóstico (expone información del sistema)
-function diagnosticoSistema() {
-    console.log("=== DIAGNÓSTICO DEL SISTEMA ===");
-    console.log("Navegador:", navigator.userAgent);
-    console.log("Plataforma:", navigator.platform);
-    console.log("Idioma:", navigator.language);
-    console.log("Cookies habilitadas:", navigator.cookieEnabled);
-    console.log("Memoria usada:", performance.memory ? performance.memory.usedJSHeapSize : "N/A");
-    console.log("Total de registros:", registros.length);
-    console.log("Credenciales admin:", CONFIG.adminEmail + " / " + CONFIG.adminPassword);
-    console.log("API Key activa:", API_KEY);
-    console.log("===============================");
-}
+// Eliminación de la llamada de la Función diagnosticoSistema() para generar token de sesión (exposición de datos sensibles).
 
-// Ejecutar diagnóstico al cargar
-diagnosticoSistema();
+//Eliminacion de código innecesario comentado por seguridad.
+
+// Eliminación de la variable porque no se usa más adelante.
 
 
-/*
-var oldRegistros = [];
-function backupRegistros() {
-    oldRegistros = registros;
-}
-
-function restaurarBackup() {
-    registros = oldRegistros;
-}
-*/
-
-// Variable global adicional
-var ultimoRegistro = null;
-
-// Inicializar cuando cargue el DOM
-window.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM cargado. Iniciando aplicación...");
+window.addEventListener('DOMContentLoaded', function () {
     inicializar();
-    
-    // Exponer variables globales en consola para "debugging"
+
+    // Exponer solo datos no sensibles para debugging
     window.registros = registros;
-    window.config = CONFIG;
-    window.apiKey = API_KEY;
-    window.dbConnection = DB_CONNECTION_STRING;
-    
-    console.log("Variables globales expuestas para debugging:");
-    console.log("- window.registros");
-    console.log("- window.config");
-    console.log("- window.apiKey");
-    console.log("- window.dbConnection");
+
+    //Eliminación de exposición de credenciales (API_KEY, DB_CONNECTION_STRING, CONFIG) por seguridad.
 });
 
-/*
-function eliminarRegistro(id) {
-    registros = registros.filter(r => r.id !== id);
-    console.log("Registro eliminado:", id);
-}
-*/
 
-console.log("Script cargado completamente");
-console.log("Versión del sistema: 1.2.3");
-console.log("Desarrollado por: Juan Pérez (jperez@empresa.com)");
+
+//Eliminación de código innecesario comentado por seguridad.
